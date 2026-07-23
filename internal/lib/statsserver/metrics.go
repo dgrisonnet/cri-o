@@ -155,8 +155,7 @@ func sandboxBaseLabelValues(sb *sandbox.Sandbox) []string {
 		podName = md.GetName()
 	}
 
-	// TODO FIXME: image?
-	return []string{sb.ID(), "", namespace, podName, "POD"}
+	return []string{sb.ID(), "", namespace, podName, ""}
 }
 
 // computeContainerMetrics computes the metrics for container.
