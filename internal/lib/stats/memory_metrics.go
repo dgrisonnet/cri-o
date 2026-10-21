@@ -103,6 +103,42 @@ func generateContainerMemoryMetrics(ctr *oci.Container, mem *cgmgr.MemoryStats) 
 				return metrics
 			},
 		},
+		{
+			desc: containerMemoryFileDirty,
+			valueFunc: func() metricValues {
+				return metricValues{{value: mem.FileDirty, metricType: types.MetricType_GAUGE}}
+			},
+		},
+		{
+			desc: containerMemoryFileWriteback,
+			valueFunc: func() metricValues {
+				return metricValues{{value: mem.FileWriteback, metricType: types.MetricType_GAUGE}}
+			},
+		},
+		{
+			desc: containerMemoryPgscan,
+			valueFunc: func() metricValues {
+				return metricValues{{value: mem.Pgscan, metricType: types.MetricType_COUNTER}}
+			},
+		},
+		{
+			desc: containerMemoryPgsteal,
+			valueFunc: func() metricValues {
+				return metricValues{{value: mem.Pgsteal, metricType: types.MetricType_COUNTER}}
+			},
+		},
+		{
+			desc: containerMemoryWorkingSetRefaultAnon,
+			valueFunc: func() metricValues {
+				return metricValues{{value: mem.WorkingSetRefaultAnon, metricType: types.MetricType_COUNTER}}
+			},
+		},
+		{
+			desc: containerMemoryWorkingSetRefaultFile,
+			valueFunc: func() metricValues {
+				return metricValues{{value: mem.WorkingSetRefaultFile, metricType: types.MetricType_COUNTER}}
+			},
+		},
 	}
 
 	return computeContainerMetrics(ctr, memoryMetrics, "memory")

@@ -156,6 +156,36 @@ var (
 		Help:      "Cumulative count of memory allocation failures.",
 		LabelKeys: append(baseLabelKeys, "failure_type", "scope"),
 	}
+	containerMemoryFileDirty = &types.MetricDescriptor{
+		Name:      "container_memory_file_dirty_bytes",
+		Help:      "Number of bytes of file cache that has been modified but not yet written back to disk.",
+		LabelKeys: baseLabelKeys,
+	}
+	containerMemoryFileWriteback = &types.MetricDescriptor{
+		Name:      "container_memory_file_writeback_bytes",
+		Help:      "Number of bytes of file cache that is currently being written back to disk.",
+		LabelKeys: baseLabelKeys,
+	}
+	containerMemoryPgscan = &types.MetricDescriptor{
+		Name:      "container_memory_pgscan_total",
+		Help:      "Cumulative number of pages scanned by the page reclaim algorithm.",
+		LabelKeys: baseLabelKeys,
+	}
+	containerMemoryPgsteal = &types.MetricDescriptor{
+		Name:      "container_memory_pgsteal_total",
+		Help:      "Cumulative number of pages reclaimed by the page reclaim algorithm.",
+		LabelKeys: baseLabelKeys,
+	}
+	containerMemoryWorkingSetRefaultAnon = &types.MetricDescriptor{
+		Name:      "container_memory_workingset_refault_anon_total",
+		Help:      "Cumulative number of refaults of previously evicted anonymous pages.",
+		LabelKeys: baseLabelKeys,
+	}
+	containerMemoryWorkingSetRefaultFile = &types.MetricDescriptor{
+		Name:      "container_memory_workingset_refault_file_total",
+		Help:      "Cumulative number of refaults of previously evicted file pages.",
+		LabelKeys: baseLabelKeys,
+	}
 )
 
 var networkLabelKeys = append(baseLabelKeys, "interface")

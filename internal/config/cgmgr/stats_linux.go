@@ -49,6 +49,18 @@ type MemoryStats struct {
 	FileMapped uint64
 	// The number of memory usage hits limits. For cgroup v1 only.
 	Failcnt uint64
+	// Amount of file cache modified but not yet written back to disk. cgroup v2 only.
+	FileDirty uint64
+	// Amount of file cache currently being written back to disk. cgroup v2 only.
+	FileWriteback uint64
+	// Cumulative number of pages scanned by the page reclaim algorithm. cgroup v2 only.
+	Pgscan uint64
+	// Cumulative number of pages reclaimed by the page reclaim algorithm. cgroup v2 only.
+	Pgsteal uint64
+	// Cumulative number of refaults of previously evicted anonymous pages. cgroup v2 only.
+	WorkingSetRefaultAnon uint64
+	// Cumulative number of refaults of previously evicted file pages. cgroup v2 only.
+	WorkingSetRefaultFile uint64
 }
 
 type CPUStats struct {
@@ -233,6 +245,13 @@ func cgroupMemStats(memStats *cgroups.MemoryStats) *MemoryStats {
 		SwapLimit:       memStats.SwapUsage.Limit,
 		FileMapped:      fileMapped,
 		Failcnt:         failcnt,
+		// cgroup v2 only keys; absent on v1, so the map lookup yields zero.
+		FileDirty:             memStats.Stats["file_dirty"],
+		FileWriteback:         memStats.Stats["file_writeback"],
+		Pgscan:                memStats.Stats["pgscan"],
+		Pgsteal:               memStats.Stats["pgsteal"],
+		WorkingSetRefaultAnon: memStats.Stats["workingset_refault_anon"],
+		WorkingSetRefaultFile: memStats.Stats["workingset_refault_file"],
 	}
 }
 

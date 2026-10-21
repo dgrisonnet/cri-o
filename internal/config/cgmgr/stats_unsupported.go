@@ -31,6 +31,13 @@ type MemoryStats struct {
 	SwapLimit       uint64
 	FileMapped      uint64
 	Failcnt         uint64
+
+	FileDirty             uint64
+	FileWriteback         uint64
+	Pgscan                uint64
+	Pgsteal               uint64
+	WorkingSetRefaultAnon uint64
+	WorkingSetRefaultFile uint64
 }
 
 type CPUStats struct {
