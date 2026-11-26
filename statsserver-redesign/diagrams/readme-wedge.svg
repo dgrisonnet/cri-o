@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="readme-wedge-title readme-wedge-desc" id="readme-wedge-root">
+        <title id="readme-wedge-title">Sandbox lifecycle waits on slow stats collection</title>
+        <desc id="readme-wedge-desc">Sandbox creation waits for stateLock, which sandbox removal holds while it waits for the stats mutex held by a slow collection.</desc>
+        <defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
+      #readme-wedge-root { --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #bf4520;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace; }
+      #readme-wedge-root { font-family: var(--font-sans); color: var(--color-ink); }
+      #readme-wedge-root .diagram-container { width: 100%; overflow-x: auto; }
+      @media print {
+#readme-wedge-root .diagram-container { overflow-x: visible; }
+}</style>
+          <marker id="readme-wedge-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="readme-wedge-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+          <marker id="readme-wedge-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+        </defs>
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+        <!-- zones -->
+        <!-- connectors (drawn before nodes) -->
+        <path d="M264,252 H376" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#readme-wedge-arrow)"/>
+        <path d="M584,252 H696" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#readme-wedge-arrow)"/>
+        <!-- arrow labels -->
+        <rect x="276" y="232" width="88" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="320" y="241" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">WAIT STATELOCK</text>
+        <rect x="606" y="232" width="68" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="640" y="241" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">WAIT MUTEX</text>
+        <text x="480" y="356" fill="#4f5d75" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">Removal holds stateLock while it waits, so every sandbox creation on the node waits too.</text>
+        <text x="480" y="384" fill="#4f5d75" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="middle">Moving collection outside the stats mutex breaks this wait.</text>
+        <!-- nodes -->
+        <rect x="56" y="216" width="208" height="72" rx="6" fill="#f5f5f5"/>
+        <rect x="56" y="216" width="208" height="72" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="64" y="222" width="28" height="12" rx="2" fill="none" stroke="#5a6580" stroke-opacity="0.5" stroke-width="0.8"/>
+        <text x="78" y="230.5" fill="#5a6580" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CRI</text>
+        <text x="160" y="255" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Sandbox creation</text>
+        <text x="160" y="271" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">RunPodSandbox</text>
+        <rect x="376" y="216" width="208" height="72" rx="6" fill="#f5f5f5"/>
+        <rect x="376" y="216" width="208" height="72" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="384" y="222" width="28" height="12" rx="2" fill="none" stroke="#5a6580" stroke-opacity="0.5" stroke-width="0.8"/>
+        <text x="398" y="230.5" fill="#5a6580" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CRI</text>
+        <text x="480" y="249" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Sandbox removal</text>
+        <text x="480" y="265" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">RemoveSandbox</text>
+        <text x="480" y="277" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">holds stateLock</text>
+        <rect x="696" y="216" width="208" height="72" rx="6" fill="#f5f5f5"/>
+        <rect x="696" y="216" width="208" height="72" rx="6" fill="#bf4520" stroke="#bf4520" stroke-width="1" fill-opacity="0.08"/>
+        <rect x="704" y="222" width="36" height="12" rx="2" fill="none" stroke="#bf4520" stroke-opacity="0.5" stroke-width="0.8"/>
+        <text x="722" y="230.5" fill="#bf4520" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STATS</text>
+        <text x="800" y="255" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Slow collection</text>
+        <text x="800" y="271" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">holds the stats mutex</text>
+        <!-- legend -->
+        <line x1="40" y1="540" x2="920" y2="540" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="40" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+        <rect x="128" y="550" width="16" height="12" rx="2" fill="#bf4520" stroke="#bf4520" fill-opacity="0.08"/>
+        <text x="152" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.08em">LOCK HELD DURING COLLECTION</text>
+        <rect x="332" y="550" width="16" height="12" rx="2" fill="#ffffff" stroke="#2d3142"/>
+        <text x="356" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.08em">LIFECYCLE CALL</text>
+        <line x1="464" y1="556" x2="488" y2="556" stroke="#4f5d75" stroke-width="1.2"/>
+        <polygon points="488,553 494,556 488,559" fill="#4f5d75"/>
+        <text x="502" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.08em">WAITS FOR</text>
+      </svg>

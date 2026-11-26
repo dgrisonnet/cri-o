@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="design-4-components-title design-4-components-desc" id="design-4-components-root">
+        <title id="design-4-components-title">Design 4 detailed data flow</title>
+        <desc id="design-4-components-desc">CRI stats and metrics handlers reach a per-pod sandboxCollector through an O(1) collectorRegistry; the collector gathers one containerSample feeding stats and metrics projections, and only the DiskMetrics case calls the runtime DiskStats walk while collector.mu is held, while RemoveSandbox detaches the collector without taking its lock.</desc>
+        <defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
+      #design-4-components-root { --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #bf4520;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace; }
+      #design-4-components-root { font-family: var(--font-sans); color: var(--color-ink); }
+      #design-4-components-root .diagram-container { width: 100%; overflow-x: auto; }
+      @media print {
+#design-4-components-root .diagram-container { overflow-x: visible; }
+}</style>
+          <marker id="design-4-components-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="design-4-components-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+          <marker id="design-4-components-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+
+        </defs>
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+<rect x="40" y="48" width="672" height="112" rx="8" fill="#2d3142" stroke="#2d3142" stroke-width="0.8" fill-opacity="0.02" stroke-opacity="0.10"/>
+<rect x="52" y="52" width="264" height="12" rx="2" fill="#f5f5f5"/>
+<text x="58" y="61" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.14em">CRI gRPC handlers · server/* · each carries ctx</text>
+<rect x="40" y="280" width="672" height="112" rx="8" fill="#2d3142" stroke="#2d3142" stroke-width="0.8" fill-opacity="0.02" stroke-opacity="0.10"/>
+<rect x="340" y="284" width="236" height="12" rx="2" fill="#f5f5f5"/>
+<text x="346" y="293" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.14em">collectorRegistry · RWMutex held O(1) ONLY</text>
+<rect x="40" y="440" width="672" height="112" rx="8" fill="#2d3142" stroke="#2d3142" stroke-width="0.8" fill-opacity="0.02" stroke-opacity="0.10"/>
+<rect x="52" y="444" width="244" height="12" rx="2" fill="#f5f5f5"/>
+<text x="58" y="453" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.14em">runtime-backend seam · ctx-cancellable walk</text>
+<rect x="744" y="48" width="496" height="504" rx="8" fill="#2d3142" stroke="#2d3142" stroke-width="0.8" fill-opacity="0.02" stroke-opacity="0.10"/>
+<rect x="756" y="52" width="324" height="12" rx="2" fill="#f5f5f5"/>
+<text x="762" y="61" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.14em">sandboxCollector (one per pod) · mu HELD ACROSS COLLECTION</text>
+<line x1="324" y1="144" x2="324" y2="192" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="580" y1="144" x2="580" y2="192" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="324" y1="248" x2="324" y2="312" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="580" y1="248" x2="580" y2="312" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="120" y1="144" x2="120" y2="312" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="696" y1="344" x2="744" y2="344" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<path d="M 176,376 V 408 Q 176,416 184,416 H 744" fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#design-4-components-arrow)"/>
+<line x1="992" y1="144" x2="992" y2="176" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="900" y1="232" x2="900" y2="272" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="1084" y1="232" x2="1084" y2="272" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="840" y1="352" x2="840" y2="392" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<path d="M 940,352 V 364 Q 940,372 948,372 H 1036 Q 1044,372 1044,380 V 400" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="1164" y1="352" x2="1164" y2="400" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<line x1="760" y1="464" x2="712" y2="464" stroke="#bf4520" stroke-width="1.4" marker-end="url(#design-4-components-arrow-accent)"/>
+<rect x="514" y="422" width="92" height="12" rx="2" fill="#f5f5f5"/>
+<text x="560" y="431" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">DETACH, NO LOCK</text>
+<!-- Node: RemoveSandbox -->
+<rect x="56" y="80" width="128" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="56" y="80" width="128" height="64" rx="6" fill="#4f5d75" stroke="#5a6580" stroke-width="1" fill-opacity="0.10"/>
+<text x="120" y="109.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">RemoveSandbox</text>
+<text x="120" y="123" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">holds stateLock</text>
+<!-- Node: ListContainerStats / -->
+<rect x="208" y="80" width="232" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="208" y="80" width="232" height="64" rx="6" fill="#4f5d75" stroke="#5a6580" stroke-width="1" fill-opacity="0.10"/>
+<text x="324" y="108" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">ListContainerStats /</text>
+<text x="324" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">PodSandboxStats</text>
+<!-- Node: ListPodSandboxMetrics -->
+<rect x="464" y="80" width="232" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="464" y="80" width="232" height="64" rx="6" fill="#4f5d75" stroke="#5a6580" stroke-width="1" fill-opacity="0.10"/>
+<text x="580" y="116" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">ListPodSandboxMetrics</text>
+<!-- Node: StatsForContainers(ctx) -->
+<rect x="208" y="192" width="232" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="208" y="192" width="232" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="324" y="217.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">StatsForContainers(ctx)</text>
+<text x="324" y="231" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ctx.Err per item (P6)</text>
+<!-- Node: MetricsForPodSandboxList(ctx) -->
+<rect x="464" y="192" width="232" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="464" y="192" width="232" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="580" y="217.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">MetricsForPodSandboxList(ctx)</text>
+<text x="580" y="231" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ctx.Err per item (P6)</text>
+<!-- Node: remove(id) -->
+<rect x="56" y="312" width="224" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="56" y="312" width="224" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="168" y="335" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">remove(id)</text>
+<text x="168" y="348.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Detach collector under</text>
+<text x="168" y="361.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">registry lock (P6)</text>
+<!-- Node: forSandbox(sb) -->
+<rect x="300" y="312" width="396" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="300" y="312" width="396" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="498" y="341.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">forSandbox(sb)</text>
+<text x="498" y="355" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">RLock fast-path, Lock to create</text>
+<!-- Node: runtimeOCI.DiskStats -->
+<rect x="56" y="472" width="272" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="56" y="472" width="272" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="192" y="495" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">runtimeOCI.DiskStats</text>
+<text x="192" y="508.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">filepath.WalkDir merged/ + ctx.Err</text>
+<text x="192" y="521.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">EXPENSIVE (P5)</text>
+<!-- Node: runtimePod -->
+<rect x="352" y="472" width="160" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="352" y="472" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="432" y="501.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">runtimePod</text>
+<text x="432" y="515" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">delegates</text>
+<!-- Node: runtimeVM -->
+<rect x="536" y="472" width="160" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="536" y="472" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="616" y="501.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">runtimeVM</text>
+<text x="616" y="515" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">zeros</text>
+<!-- Node: accessors -->
+<rect x="760" y="80" width="464" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="760" y="80" width="464" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="992" y="103" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">accessors</text>
+<text x="992" y="116.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">sandboxStats / containerStats / sandboxMetrics</text>
+<text x="992" y="129.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">one-line stale() check (P4: centralized, not a wall)</text>
+<!-- Node: containerSample -->
+<rect x="852" y="176" width="280" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="852" y="176" width="280" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="992" y="201.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">containerSample</text>
+<text x="992" y="215" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">cgroup gathered once (P1/P2)</text>
+<!-- Node: metricsProjection -->
+<rect x="760" y="272" width="220" height="80" rx="6" fill="#f5f5f5"/>
+<rect x="760" y="272" width="220" height="80" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="870" y="303" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">metricsProjection</text>
+<text x="870" y="316.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">.container()</text>
+<text x="870" y="329.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">per EnabledPodMetrics</text>
+<!-- Node: statsProjection -->
+<rect x="1004" y="272" width="220" height="80" rx="6" fill="#f5f5f5"/>
+<rect x="1004" y="272" width="220" height="80" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1114" y="290" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">statsProjection</text>
+<text x="1114" y="303.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">.container()</text>
+<text x="1114" y="316.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">WritableLayer (graph driver)</text>
+<text x="1114" y="329.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">+ UsageNanoCores</text>
+<text x="1114" y="342.5" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">NO rootfs walk (P1)</text>
+<!-- Node: Runtime().DiskStats(ctx) -->
+<rect x="760" y="392" width="220" height="88" rx="6" fill="#f5f5f5"/>
+<rect x="760" y="392" width="220" height="88" rx="6" fill="#bf4520" stroke="#bf4520" stroke-width="1" fill-opacity="0.08"/>
+<text x="870" y="420.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">Runtime().DiskStats(ctx)</text>
+<text x="870" y="434" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">case DiskMetrics ONLY</text>
+<text x="870" y="447" fill="#bf4520" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">WALK RUNS UNDER collector.mu</text>
+<text x="870" y="460" fill="#bf4520" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">(P3 only sharded)</text>
+<!-- Node: Collector caches -->
+<rect x="1004" y="400" width="220" height="64" rx="6" fill="#f5f5f5"/>
+<rect x="1004" y="400" width="220" height="64" rx="6" fill="#2d3142" stroke="#4f5d75" stroke-width="1" fill-opacity="0.05"/>
+<text x="1114" y="428" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Collector caches</text>
+<text x="1114" y="444" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">stats and metrics</text>
+<line x1="40" y1="600" x2="1240" y2="600" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.10"/>
+<text x="40" y="616" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+<rect x="40" y="632" width="14" height="10" rx="2" fill="#4f5d75" stroke="#5a6580" stroke-width="1" fill-opacity="0.10"/>
+<text x="60" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">CRI handler</text>
+<rect x="160" y="632" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="180" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Component</text>
+<rect x="272" y="632" width="14" height="10" rx="2" fill="#2d3142" stroke="#4f5d75" stroke-width="1" fill-opacity="0.05"/>
+<text x="292" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Cache</text>
+<rect x="360" y="632" width="14" height="10" rx="2" fill="#bf4520" stroke="#bf4520" stroke-width="1" fill-opacity="0.08"/>
+<text x="380" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Disk walk under collector.mu</text>
+<rect x="548" y="632" width="14" height="10" rx="2" fill="#2d3142" stroke="#2d3142" stroke-width="0.8" fill-opacity="0.02" stroke-opacity="0.10"/><text x="568" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Zone (source subgraph)</text>
+<line x1="700" y1="637" x2="728" y2="637" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#design-4-components-arrow)"/>
+<text x="736" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Call / data flow</text>
+<line x1="840" y1="637" x2="868" y2="637" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#design-4-components-arrow)"/>
+<text x="876" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Detach, no collector lock</text>
+<line x1="1020" y1="637" x2="1048" y2="637" stroke="#bf4520" stroke-width="1.4" marker-end="url(#design-4-components-arrow-accent)"/>
+<text x="1056" y="640" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Walk off the hot path</text>
+      </svg>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposed approach</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #bf4520;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .frame { max-width: 1000px; width: 100%; min-width: 0; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 960px; display: block; }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Flowchart · Design review</p>
+    <h1>Proposed approach</h1>
+    <div class="diagram-container">
+      <svg viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="review-proposed-title review-proposed-desc">
+        <title id="review-proposed-title">Proposed stats and metrics flow</title>
+        <desc id="review-proposed-desc">Stats and metrics each collect their own inputs and build their own response, then publish only if the object is still live and the sample is newer, while object removal invalidates the cached entry.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+        </defs>
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+        <!-- zones -->
+        <!-- connectors (drawn before nodes) -->
+        <path d="M244,128 V176" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M244,232 V280" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M564,128 V176" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M564,232 V280" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M244,336 V360 Q244,368 252,368 H348 Q356,368 356,376 V400" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M564,336 V360 Q564,368 556,368 H460 Q452,368 452,376 V400" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <path d="M648,432 H544" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- arrow labels -->
+        <rect x="562" y="412" width="68" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="596" y="421" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">INVALIDATE</text>
+        <!-- nodes -->
+        <rect x="124" y="72" width="240" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="124" y="72" width="240" height="56" rx="6" fill="rgba(79,93,117,0.10)" stroke="#5a6580" stroke-width="1"/>
+        <text x="244" y="103.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Stats request or refresh</text>
+        <rect x="444" y="72" width="240" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="444" y="72" width="240" height="56" rx="6" fill="rgba(79,93,117,0.10)" stroke="#5a6580" stroke-width="1"/>
+        <text x="564" y="103.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Metrics request or refresh</text>
+        <rect x="124" y="176" width="240" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="124" y="176" width="240" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="244" y="207.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Collect stats inputs</text>
+        <rect x="444" y="176" width="240" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="444" y="176" width="240" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="564" y="207.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Collect enabled metric inputs</text>
+        <rect x="124" y="280" width="240" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="124" y="280" width="240" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="244" y="311.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Build stats response</text>
+        <rect x="444" y="280" width="240" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="444" y="280" width="240" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="564" y="311.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Build metrics response</text>
+        <rect x="264" y="400" width="280" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="264" y="400" width="280" height="64" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+        <text x="404" y="428" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Publish if the object is live</text>
+        <text x="404" y="443" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">and the sample is newer</text>
+        <rect x="648" y="404" width="192" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="648" y="404" width="192" height="56" rx="6" fill="rgba(79,93,117,0.10)" stroke="#5a6580" stroke-width="1"/>
+        <text x="744" y="435.5" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Object removal</text>
+        <!-- legend -->
+        <line x1="40" y1="540" x2="920" y2="540" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="40" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+        <rect x="128" y="550" width="16" height="12" rx="2" fill="rgba(79,93,117,0.10)" stroke="#5a6580"/>
+        <text x="152" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.08em">REQUEST OR TRIGGER</text>
+        <rect x="284" y="550" width="16" height="12" rx="2" fill="#ffffff" stroke="#2d3142"/>
+        <text x="308" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.08em">STEP</text>
+        <rect x="360" y="550" width="16" height="12" rx="2" fill="rgba(191,69,32,0.08)" stroke="#bf4520"/>
+        <text x="384" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.08em">GUARDED PUBLISH</text>
+        <line x1="496" y1="556" x2="520" y2="556" stroke="#4f5d75" stroke-width="1.2"/>
+        <polygon points="520,553 526,556 520,559" fill="#4f5d75"/>
+        <text x="534" y="560" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.08em">FLOW</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

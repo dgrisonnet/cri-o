@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposed design — collection pseudocode</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#f5f5f5; --ink:#2d3142; --muted:#4f5d75; --soft:#5a6580; --rule:rgba(45,49,66,.14); --accent:#bf4520; --link:#2e5aa8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:Geist, system-ui, sans-serif; line-height:1.55; }
+  .wrap { max-width:1080px; margin:0 auto; padding:48px 32px 96px; }
+  .eyebrow { font-family:"Geist Mono", ui-monospace, monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; }
+  h1 { font-family:"Instrument Serif", Georgia, serif; font-weight:400; font-size:40px; line-height:1.1; letter-spacing:-.02em; margin:0 0 12px; }
+  .lede { color:var(--muted); max-width:760px; margin:0 0 28px; }
+  nav.toc { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 36px; }
+  nav.toc a { font-family:"Geist Mono", ui-monospace, monospace; font-size:11.5px; color:var(--ink); text-decoration:none; border:1px solid var(--rule); background:#fff; border-radius:6px; padding:4px 10px; }
+  nav.toc a:hover { border-color:var(--ink); }
+  section { margin:0 0 40px; }
+  h2 { font-size:18px; font-weight:600; margin:0 0 6px; display:flex; align-items:baseline; gap:10px; }
+  h2 .n { font-family:"Geist Mono", ui-monospace, monospace; font-size:12px; font-weight:400; color:var(--accent); }
+  .why { color:var(--muted); font-size:14px; margin:0 0 12px; max-width:820px; }
+  .why q { font-style:italic; font-family:"Instrument Serif", Georgia, serif; font-size:16px; color:var(--ink); quotes:"“" "”"; }
+  pre { margin:0; background:#fff; border:1px solid var(--rule); border-radius:6px; padding:18px 20px; overflow-x:auto;
+        font-family:"Geist Mono", ui-monospace, monospace; font-size:12.5px; line-height:1.6; tab-size:4; }
+  .k { color:#7a3e9d; font-weight:500; }      /* keyword */
+  .t { color:var(--link); }                     /* type */
+  .c { color:var(--soft); font-style:italic; } /* comment */
+  .r { color:var(--accent); font-weight:500; } /* review rule marker */
+  .f { color:var(--ink); font-weight:600; }    /* func name */
+  .s { color:#2f7d4f; }                         /* string */
+  .note { border-left:3px solid var(--accent); background:rgba(191,69,32,.05); padding:10px 14px; margin:12px 0 0; font-size:13.5px; border-radius:0 6px 6px 0; }
+  .note.open { border-left-color:var(--muted); background:rgba(45,49,66,.04); }
+  code { font-family:"Geist Mono", ui-monospace, monospace; font-size:.9em; background:rgba(45,49,66,.06); padding:1px 4px; border-radius:3px; }
+  .legend { font-size:12.5px; color:var(--muted); margin:0 0 28px; }
+  .legend span { margin-right:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Design review · Proposed approach · Pseudocode</p>
+  <h1>What collection would look like</h1>
+  <p class="lede">Go-flavoured pseudocode for the proposed stats server, following the rules in
+  <code>design-review.md</code> ("Proposed approach"). Names are illustrative and match the
+  <a href="review-proposed-types.html">data structures diagram</a>. Error handling, logging and
+  non-Linux paths are elided unless they carry a rule.</p>
+  <p class="legend"><span class="r">// R:</span> rule taken from the review &nbsp; <span class="c">// comment</span> &nbsp; <span class="r">OPEN</span> decision the review leaves open</p>
+
+  <nav class="toc">
+    <a href="#types">1 · Types</a><a href="#lifecycle">2 · Lifecycle tokens</a><a href="#sweeps">3 · Periodic sweeps</a>
+    <a href="#stats">4 · Stats collection</a><a href="#metrics">5 · Metrics collection</a><a href="#adapter">6 · Runtime adapter</a><a href="#cgroups">7 · Cgroup v1/v2</a>
+    <a href="#publish">8 · Publish</a><a href="#rpc">9 · RPC read paths</a><a href="#cpu">10 · CPU rate</a>
+  </nav>
+
+  <section id="types">
+    <h2><span class="n">1</span>Types</h2>
+    <p class="why">Everything that gets published is immutable. Observations carry their own token, monotonic time and field availability.</p>
+<pre><span class="k">type</span> <span class="t">StatsServer</span> <span class="k">struct</span> {
+    collectionPeriod  <span class="t">Duration</span>          <span class="c">// 0 = on demand, &gt;0 = background sweeps</span>
+    statsAdmit        <span class="t">admission</span>         <span class="r">// R: stats get independent admission</span>
+    metricsAdmit      <span class="t">admission</span>         <span class="c">// both bound sweeps AND on-demand / cache-miss reads</span>
+    statsSweep        *<span class="t">sweeper</span>          <span class="c">// one per view, see §3</span>
+    metricsSweep      *<span class="t">sweeper</span>
+    store             *<span class="t">resultStore</span>
+}
+
+<span class="k">type</span> <span class="t">resultStore</span> <span class="k">struct</span> {
+    mu         <span class="t">Mutex</span>                        <span class="r">// R: short lock, map ops only, never held across I/O</span>
+    live       <span class="k">map</span>[<span class="t">ID</span>]*<span class="t">lifecycleToken</span>
+    pods       <span class="k">map</span>[<span class="t">ID</span>]*<span class="t">podStatsEntry</span>
+    containers <span class="k">map</span>[<span class="t">ID</span>]*<span class="t">containerHistory</span>    <span class="c">// shared by nested and standalone stats</span>
+    metrics    <span class="k">map</span>[<span class="t">ID</span>]*<span class="t">podMetricsEntry</span>
+}
+
+<span class="k">type</span> <span class="t">lifecycleToken</span> <span class="k">struct</span>{ id <span class="t">ID</span> }       <span class="c">// identity = the pointer itself; no generation needed</span>
+
+<span class="k">type</span> <span class="t">observation</span>[<span class="t">V</span> <span class="k">any</span>] <span class="k">struct</span> {
+    token      *<span class="t">lifecycleToken</span>
+    mono       <span class="t">MonotonicTime</span>             <span class="r">// R: order samples by in-process monotonic time</span>
+    wall       <span class="t">Time</span>                      <span class="r">// R: preserve wall-clock timestamps for the wire</span>
+    source     <span class="t">counterSource</span>             <span class="c">// kind + cgroup version + producer, see §7</span>
+    present    <span class="t">fieldSet</span>                  <span class="r">// R: missing fields stay absent, not zero</span>
+    values     <span class="t">V</span>
+}
+
+<span class="k">type</span> <span class="t">containerHistory</span> <span class="k">struct</span> { latest, baseline *<span class="t">observation</span>[<span class="t">containerValues</span>] }
+<span class="k">type</span> <span class="t">podStatsEntry</span>    <span class="k">struct</span> { obs *<span class="t">observation</span>[<span class="t">podCounters</span>] }       <span class="c">// pod-level only</span>
+<span class="k">type</span> <span class="t">podMetricsEntry</span>  <span class="k">struct</span> { obs *<span class="t">observation</span>[<span class="t">metricValues</span>] }</pre>
+  </section>
+
+  <section id="lifecycle">
+    <h2><span class="n">2</span>Lifecycle tokens</h2>
+    <p class="why"><q>Capture an identity token tied to the existing sandbox or container lifecycle before collecting. Invalidate it and evict its entries in the removal path.</q></p>
+<pre><span class="c">// Called from the existing lifecycle: AddSandbox / AddContainer.</span>
+<span class="c">// Registering at creation (not lazily on first read) is what stops a stale</span>
+<span class="c">// caller from recreating an entry for an object that is already gone.</span>
+<span class="k">func</span> (s *<span class="t">resultStore</span>) <span class="f">register</span>(id <span class="t">ID</span>) {
+    s.mu.<span class="f">Lock</span>(); <span class="k">defer</span> s.mu.<span class="f">Unlock</span>()
+    s.live[id] = &amp;<span class="t">lifecycleToken</span>{id: id}
+}
+
+<span class="c">// Called before any I/O. nil means "already removed: don't collect".</span>
+<span class="k">func</span> (s *<span class="t">resultStore</span>) <span class="f">token</span>(id <span class="t">ID</span>) *<span class="t">lifecycleToken</span> {
+    s.mu.<span class="f">Lock</span>(); <span class="k">defer</span> s.mu.<span class="f">Unlock</span>()
+    <span class="k">return</span> s.live[id]
+}
+
+<span class="c">// Called from RemoveContainer / RemoveSandbox. Never waits for collection.</span>
+<span class="k">func</span> (s *<span class="t">resultStore</span>) <span class="f">invalidate</span>(id <span class="t">ID</span>) {
+    s.mu.<span class="f">Lock</span>(); <span class="k">defer</span> s.mu.<span class="f">Unlock</span>()
+    <span class="k">delete</span>(s.live, id)                       <span class="r">// R: invalidate the token ...</span>
+    <span class="k">delete</span>(s.pods, id); <span class="k">delete</span>(s.containers, id); <span class="k">delete</span>(s.metrics, id)  <span class="r">// R: ... and evict its entries</span>
+}</pre>
+  </section>
+
+  <section id="sweeps">
+    <h2><span class="n">3</span>Periodic sweeps (<code>collection_period &gt; 0</code>)</h2>
+    <p class="why"><q>Give stats and metrics independent refresh paths … let stats publish while a metrics refresh is blocked. Allow at most one periodic sweep per view.</q></p>
+<pre><span class="k">type</span> <span class="t">sweeper</span> <span class="k">struct</span> {
+    refresh  <span class="k">func</span>(<span class="t">Context</span>, *<span class="t">Sandbox</span>)   <span class="c">// refreshPodStats | refreshPodMetrics</span>
+    workers  <span class="t">semaphore</span>                   <span class="c">// sweep parallelism: admission capacity - reservedForRequests</span>
+    mu       <span class="t">Mutex</span>
+    inflight <span class="k">map</span>[<span class="t">ID</span>]<span class="t">bool</span>                <span class="c">// pods of THIS view with a refresh still running</span>
+    dispatching <span class="t">atomic.Bool</span>            <span class="c">// one dispatch loop per view (it can wait for a worker)</span>
+}
+
+<span class="k">func</span> (ss *<span class="t">StatsServer</span>) <span class="f">run</span>(ctx <span class="t">Context</span>) {          <span class="c">// ctx is cancelled on Shutdown</span>
+    <span class="k">if</span> ss.collectionPeriod == 0 { <span class="k">return</span> }   <span class="r">// R: keep zero-period on-demand mode</span>
+    tick := <span class="f">NewTicker</span>(ss.collectionPeriod)
+    <span class="k">for</span> {
+        <span class="k">select</span> {
+        <span class="k">case</span> &lt;-ctx.<span class="f">Done</span>(): <span class="k">return</span>
+        <span class="k">case</span> &lt;-tick.C:
+            <span class="k">go</span> ss.statsSweep.<span class="f">dispatch</span>(ctx, ss.<span class="f">ListSandboxes</span>())     <span class="r">// R: independent refresh paths:</span>
+            <span class="k">go</span> ss.metricsSweep.<span class="f">dispatch</span>(ctx, ss.<span class="f">ListSandboxes</span>())   <span class="r">//    a blocked metrics sweep never delays stats</span>
+        }
+    }
+}
+
+<span class="c">// Fan out the pods of one tick across a bounded set of workers.</span>
+<span class="k">func</span> (sw *<span class="t">sweeper</span>) <span class="f">dispatch</span>(ctx <span class="t">Context</span>, sboxes []*<span class="t">Sandbox</span>) {   <span class="c">// snapshot; no stateLock held</span>
+    <span class="k">if</span> !sw.dispatching.<span class="f">CompareAndSwap</span>(<span class="k">false</span>, <span class="k">true</span>) { <span class="k">return</span> }  <span class="c">// last tick's loop still waiting for workers</span>
+    <span class="k">defer</span> sw.dispatching.<span class="f">Store</span>(<span class="k">false</span>)                          <span class="c">// (all workers busy): don't stack loops</span>
+    <span class="k">for</span> _, sb := <span class="k">range</span> sboxes {
+        <span class="k">if</span> !sw.<span class="f">claim</span>(sb.ID) { <span class="k">continue</span> }      <span class="c">// still refreshing from an earlier tick: skip this pod only</span>
+
+        <span class="k">if</span> err := sw.workers.<span class="f">Acquire</span>(ctx); err != <span class="k">nil</span> {   <span class="c">// acquire BEFORE spawning: goroutines bounded too</span>
+            sw.<span class="f">unclaim</span>(sb.ID); <span class="k">return</span>             <span class="c">// shutting down</span>
+        }
+        <span class="k">go</span> <span class="k">func</span>(sb *<span class="t">Sandbox</span>) {
+            <span class="k">defer</span> sw.workers.<span class="f">Release</span>()
+            <span class="k">defer</span> sw.<span class="f">unclaim</span>(sb.ID)
+            sw.<span class="f">refresh</span>(ctx, sb)                  <span class="c">// takes a slot from the view's admission budget (§4, §5)</span>
+        }(sb)
+    }
+    <span class="c">// No wait: dispatch returns once every eligible pod has a worker.</span>
+    <span class="c">// Slow pods keep running and are simply skipped on the next tick.</span>
+}
+
+<span class="k">func</span> (sw *<span class="t">sweeper</span>) <span class="f">claim</span>(id <span class="t">ID</span>) <span class="t">bool</span> {
+    sw.mu.<span class="f">Lock</span>(); <span class="k">defer</span> sw.mu.<span class="f">Unlock</span>()
+    <span class="k">if</span> sw.inflight[id] { <span class="k">return</span> <span class="k">false</span> }
+    sw.inflight[id] = <span class="k">true</span>
+    <span class="k">return</span> <span class="k">true</span>
+}</pre>
+    <div class="note"><b>Decision: parallel, bounded.</b> Each tick fans pods out to at most <code>workers</code> goroutines per view. Two limits apply:
+      <ul style="margin:6px 0 0 18px;padding:0">
+        <li><b>Sweep workers</b> (<code>sweeper.workers</code>) cap how many pods one view refreshes at once. It's sized below the view's admission capacity, so a full sweep always leaves <code>reservedForRequests</code> slots for cache misses and on-demand RPCs.</li>
+        <li><b>Admission</b> (<code>statsAdmit</code> / <code>metricsAdmit</code>) caps all concurrent reads in that view, sweeps and requests together. That's the review's "bound concurrent reads, including synchronous cache misses and on-demand requests".</li>
+      </ul></div>
+    <div class="note"><b>Why in-flight is tracked per pod, not per sweep.</b> The review says <q>at most one periodic sweep per view</q>. Read literally (one flag per view), a single pod stuck in an uninterruptible driver call would hold the whole sweep open, every later tick would be skipped, and <em>no</em> pod in that view would refresh. Tracking in-flight per pod keeps the intent (work never piles up: at most one refresh per pod per view) while the other pods keep refreshing every period. A stuck pod costs one worker, not the view.</div>
+    <div class="note open"><b>OPEN.</b> The values of <code>workers</code> and <code>reservedForRequests</code> per view. Metrics probably wants fewer workers than stats because of disk I/O. The review asks to measure read concurrency with disk metrics enabled before picking (implementation step 3).</div>
+  </section>
+
+  <section id="stats">
+    <h2><span class="n">4</span>Stats collection</h2>
+    <p class="why"><q>Each RPC selects its own inputs. Use one container stats builder for standalone and nested container stats.</q> <q>Periodic pod stats refresh should publish child stats to the same per-container history used by standalone RPCs.</q></p>
+<pre><span class="k">func</span> (ss *<span class="t">StatsServer</span>) <span class="f">refreshPodStats</span>(ctx <span class="t">Context</span>, sb *<span class="t">Sandbox</span>) {
+    podTok := ss.store.<span class="f">token</span>(sb.ID)           <span class="r">// R: capture token BEFORE collecting</span>
+    <span class="k">if</span> podTok == <span class="k">nil</span> { <span class="k">return</span> }
+
+    release, err := ss.statsAdmit.<span class="f">acquire</span>(ctx)  <span class="r">// R: stats slots can't be filled by disk work</span>
+    <span class="k">if</span> err != <span class="k">nil</span> { <span class="k">return</span> }
+    <span class="k">defer</span> release()
+
+    <span class="c">// Pod-level counters: host pod cgroup. Process count from cgroup PID counters,</span>
+    <span class="c">// not a process scan.                                     R: pod stats already get this</span>
+    pod := ss.adapter.<span class="f">readPodCore</span>(ctx, sb)     <span class="c">// -&gt; observation[podCounters]</span>
+    pod.token = podTok
+    ss.store.<span class="f">publishPod</span>(pod)                  <span class="c">// rejected silently if pod was removed meanwhile</span>
+
+    <span class="k">for</span> _, c := <span class="k">range</span> sb.<span class="f">LiveContainers</span>() {
+        ss.<span class="f">collectContainerStats</span>(ctx, c, sb)   <span class="c">// same builder as the standalone RPC</span>
+    }
+}
+
+<span class="c">// The ONE container stats builder: used by the pod sweep, by ListContainerStats on</span>
+<span class="c">// a miss, and by on-demand mode. Stats inputs only: no rootfs walk, no process scan.</span>
+<span class="k">func</span> (ss *<span class="t">StatsServer</span>) <span class="f">collectContainerStats</span>(ctx <span class="t">Context</span>, c *<span class="t">Container</span>, sb *<span class="t">Sandbox</span>) *<span class="t">observation</span>[<span class="t">containerValues</span>] {
+    tok := ss.store.<span class="f">token</span>(c.ID)
+    <span class="k">if</span> tok == <span class="k">nil</span> { <span class="k">return</span> <span class="k">nil</span> }
+
+    obs, err := ss.adapter.<span class="f">readContainerCore</span>(ctx, c, sb)   <span class="c">// cgroup CPU/memory (or VM shim task call)</span>
+    <span class="k">if</span> err != <span class="k">nil</span> {
+        <span class="k">return</span> <span class="k">nil</span>                               <span class="r">// R: required read failed: keep previous sample + age</span>
+    }
+    <span class="k">if</span> wl, err := ss.<span class="f">writableLayer</span>(ctx, c); err == <span class="k">nil</span> {   <span class="c">// CRI WritableLayer = storage-driver usage</span>
+        obs.values.writable = wl; obs.present.<span class="f">add</span>(<span class="t">WritableLayer</span>)
+    }                                            <span class="r">// R: optional read failed: field stays absent</span>
+    obs.token = tok
+    ss.store.<span class="f">publishContainer</span>(obs)             <span class="r">// R: same history as standalone RPCs</span>
+    <span class="k">return</span> obs
+}</pre>
+  </section>
+
+  <section id="metrics">
+    <h2><span class="n">5</span>Metrics collection</h2>
+    <p class="why"><q>Collect optional metrics before rendering so projection operates on values.</q> <q>Separate the optional process scan from the core read and run it only for metrics that consume it.</q></p>
+<pre><span class="k">func</span> (ss *<span class="t">StatsServer</span>) <span class="f">refreshPodMetrics</span>(ctx <span class="t">Context</span>, sb *<span class="t">Sandbox</span>) {
+    tok := ss.store.<span class="f">token</span>(sb.ID)
+    <span class="k">if</span> tok == <span class="k">nil</span> { <span class="k">return</span> }
+
+    release, err := ss.metricsAdmit.<span class="f">acquire</span>(ctx)
+    <span class="k">if</span> err != <span class="k">nil</span> { <span class="k">return</span> }
+    <span class="k">defer</span> release()
+
+    enabled := ss.<span class="f">EnabledPodMetrics</span>()
+    vals := <span class="t">metricValues</span>{}
+    obs := <span class="t">observation</span>[<span class="t">metricValues</span>]{token: tok, mono: <span class="f">MonoNow</span>(), wall: <span class="f">Now</span>()}
+
+    <span class="k">for</span> _, c := <span class="k">range</span> sb.<span class="f">LiveContainers</span>() {
+        core, err := ss.adapter.<span class="f">readContainerCore</span>(ctx, c, sb)   <span class="c">// reuse core read code; may read twice vs stats</span>
+        <span class="k">if</span> err != <span class="k">nil</span> { <span class="k">continue</span> }
+        vals.<span class="f">addCore</span>(c, core)
+
+        <span class="k">if</span> enabled.<span class="f">needsProcessScan</span>() {          <span class="r">// R: process scan only if a metric consumes it</span>
+            <span class="k">if</span> p, err := ss.adapter.<span class="f">scanProcesses</span>(ctx, c); err == <span class="k">nil</span> { vals.<span class="f">addProcesses</span>(c, p) }
+        }
+        <span class="k">if</span> enabled.<span class="f">has</span>(<span class="t">DiskMetrics</span>) {
+            <span class="k">if</span> d, err := ss.adapter.<span class="f">diskUsage</span>(ctx, c); err == <span class="k">nil</span> { vals.<span class="f">addDisk</span>(c, d) }
+        }
+    }
+    <span class="k">if</span> enabled.<span class="f">has</span>(<span class="t">NetworkMetrics</span>) { vals.<span class="f">addNetwork</span>(ss.adapter.<span class="f">readNetwork</span>(ctx, sb)) }
+
+    obs.values = vals
+    ss.store.<span class="f">publishMetrics</span>(&amp;obs)              <span class="c">// rendering to CRI metrics happens later, on values, no I/O</span>
+}</pre>
+  </section>
+
+  <section id="adapter">
+    <h2><span class="n">6</span>Runtime adapter</h2>
+    <p class="why"><q>Carry source and field availability through the adapter, and normalize the memory and swap fields both RPCs use before projection.</q> <q>Pass the request context to the shim task call itself.</q></p>
+<pre><span class="k">func</span> (a *<span class="t">adapter</span>) <span class="f">readContainerCore</span>(ctx <span class="t">Context</span>, c *<span class="t">Container</span>, sb *<span class="t">Sandbox</span>) (*<span class="t">observation</span>[<span class="t">containerValues</span>], <span class="t">error</span>) {
+    obs := &amp;<span class="t">observation</span>[<span class="t">containerValues</span>]{mono: <span class="f">MonoNow</span>(), wall: <span class="f">Now</span>()}
+    <span class="k">switch</span> c.Runtime {
+    <span class="k">case</span> <span class="t">VM</span>:
+        resp, err := shim.<span class="f">Stats</span>(ctx, c.ID)    <span class="r">// R: request ctx reaches the task call</span>
+        <span class="k">if</span> err != <span class="k">nil</span> { <span class="k">return</span> <span class="k">nil</span>, err }
+        raw, src := <span class="f">decodeShimMetrics</span>(resp)       <span class="c">// version from the payload type, see §7</span>
+        obs.source = src                           <span class="r">// R: guest version, not host</span>
+        obs.values, obs.present = <span class="f">normalize</span>(raw, src)  <span class="c">// VM disk fields: absent, not 0</span>
+    <span class="k">default</span>:
+        cg, err := cgroup.<span class="f">CoreStats</span>(c.CgroupPath)   <span class="r">// R: no GetPids / fd scan in the core read</span>
+        <span class="k">if</span> err != <span class="k">nil</span> { <span class="k">return</span> <span class="k">nil</span>, err }
+        src := <span class="t">counterSource</span>{kind: <span class="t">hostContainerCgroup</span>, version: hostCgroupVersion, producer: <span class="f">libcontainerFor</span>(hostCgroupVersion)}
+        obs.source = src
+        obs.values, obs.present = <span class="f">normalize</span>(<span class="f">rawFromLibcontainer</span>(cg), src)   <span class="c">// see §7</span>
+    }
+    <span class="k">return</span> obs, <span class="k">nil</span>
+}
+
+<span class="k">func</span> (a *<span class="t">adapter</span>) <span class="f">diskUsage</span>(ctx <span class="t">Context</span>, c *<span class="t">Container</span>) (<span class="t">diskValues</span>, <span class="t">error</span>) {
+    ref, ok := c.<span class="f">StableMountRef</span>()             <span class="r">OPEN</span> <span class="c">// R: "investigate" — may not exist for every runtime</span>
+    <span class="k">if</span> !ok {
+        <span class="k">return</span> c.<span class="f">DiskStatsUnderOpLock</span>(ctx)        <span class="c">// fallback: today's walk; stop dependency stays explicit</span>
+    }
+    <span class="k">defer</span> ref.<span class="f">Release</span>()
+    usage, err := <span class="f">boundedWalk</span>(ctx, ref, maxEntries)   <span class="r">// R: bounded, cancellable, outside opLock</span>
+    <span class="k">if</span> err != <span class="k">nil</span> { <span class="k">return</span> <span class="t">diskValues</span>{}, err }
+    capacity, inodes := <span class="f">statfs</span>(ref)                <span class="c">// same scope as usage, as today</span>
+    <span class="k">return</span> <span class="t">diskValues</span>{usage, capacity, inodes}, <span class="k">nil</span>
+}</pre>
+  </section>
+
+  <section id="cgroups">
+    <h2><span class="n">7</span>Cgroup v1/v2 normalization</h2>
+    <p class="why"><q>Host and guest counters need different interpretation. A VM shim response identifies the guest cgroup version. Current projections use the host version for memory keys and swap arithmetic.</q> Normalization happens once in the adapter. Nothing after it calls <code>node.CgroupIsV2()</code>.</p>
+<pre><span class="c">// ---- Where a sample came from --------------------------------------------</span>
+
+<span class="k">type</span> <span class="t">counterSource</span> <span class="k">struct</span> {
+    kind     <span class="t">sourceKind</span>   <span class="c">// hostPodCgroup | hostContainerCgroup | guestContainer</span>
+    version  <span class="t">int</span>          <span class="c">// cgroup version of THIS sample (1 | 2), not of the node</span>
+    producer <span class="t">producer</span>     <span class="c">// which library produced the raw numbers (decides swap semantics)</span>
+}
+
+<span class="k">const</span> (
+    libcontainerFS   <span class="t">producer</span> = <span class="k">iota</span>   <span class="c">// host v1:  SwapUsage = memsw        (mem + swap)</span>
+    libcontainerFS2                   <span class="c">// host v2:  SwapUsage = swap.current + memory.current</span>
+    containerdV1                      <span class="c">// guest v1: Swap.Usage = memsw       (mem + swap)</span>
+    containerdV2                      <span class="c">// guest v2: SwapUsage  = swap only</span>
+)
+
+<span class="k">var</span> hostCgroupVersion = <span class="f">ternary</span>(node.<span class="f">CgroupIsV2</span>(), 2, 1)   <span class="c">// read once at startup; only used to label host samples</span>
+
+<span class="c">// The shim tells us the guest version through the payload type. No guessing from the host.</span>
+<span class="k">func</span> <span class="f">decodeShimMetrics</span>(resp *<span class="t">task.StatsResponse</span>) (<span class="t">rawCgroup</span>, <span class="t">counterSource</span>) {
+    <span class="k">switch</span> m := typeurl.<span class="f">UnmarshalAny</span>(resp.Stats).(<span class="k">type</span>) {
+    <span class="k">case</span> *<span class="t">cgroupsV1.Metrics</span>:
+        <span class="k">return</span> <span class="f">rawFromContainerdV1</span>(m), <span class="t">counterSource</span>{<span class="t">guestContainer</span>, 1, containerdV1}
+    <span class="k">case</span> *<span class="t">cgroupsV2.Metrics</span>:
+        <span class="k">return</span> <span class="f">rawFromContainerdV2</span>(m), <span class="t">counterSource</span>{<span class="t">guestContainer</span>, 2, containerdV2}
+    }
+    <span class="c">// unknown payload: required read failed -&gt; caller keeps previous sample</span>
+}
+
+<span class="c">// ---- Version-neutral values: every field has ONE meaning on every source ---</span>
+
+<span class="k">type</span> <span class="t">memoryValues</span> <span class="k">struct</span> {
+    usage, workingSet, rss     <span class="t">uint64</span>
+    swap, swapLimit            <span class="t">uint64</span>   <span class="c">// swap ONLY, everywhere</span>
+    pageFaults, majorFaults    <span class="t">uint64</span>   <span class="c">// v2 only</span>
+    anonTHP, shmemTHP, fileTHP <span class="t">uint64</span>   <span class="c">// v2 only</span>
+    activeAnon, inactiveAnon   <span class="t">uint64</span>
+    fileMapped                 <span class="t">uint64</span>
+}
+
+<span class="k">func</span> <span class="f">normalizeMemory</span>(raw <span class="t">rawMemory</span>, src <span class="t">counterSource</span>) (<span class="t">memoryValues</span>, <span class="t">fieldSet</span>) {
+    m := <span class="t">memoryValues</span>{usage: raw.usage}
+    present := <span class="t">fieldSet</span>{<span class="t">Usage</span>, <span class="t">WorkingSet</span>, <span class="t">RSS</span>, <span class="t">Swap</span>, <span class="t">Anon</span>, <span class="t">FileMapped</span>}
+
+    <span class="k">switch</span> src.version {                     <span class="r">// R: branch on the SAMPLE's version, not the node's</span>
+    <span class="k">case</span> 2:
+        m.workingSet = <span class="f">satSub</span>(raw.usage, raw.stat[<span class="s">"inactive_file"</span>])
+        m.rss        = raw.stat[<span class="s">"anon"</span>]
+        m.activeAnon, m.inactiveAnon = raw.stat[<span class="s">"active_anon"</span>], raw.stat[<span class="s">"inactive_anon"</span>]
+        m.fileMapped = raw.stat[<span class="s">"file_mapped"</span>]
+        m.pageFaults, m.majorFaults = raw.stat[<span class="s">"pgfault"</span>], raw.stat[<span class="s">"pgmajfault"</span>]
+        m.anonTHP, m.shmemTHP, m.fileTHP = raw.stat[<span class="s">"anon_thp"</span>], raw.stat[<span class="s">"shmem_thp"</span>], raw.stat[<span class="s">"file_thp"</span>]
+        present.<span class="f">add</span>(<span class="t">PageFaults</span>, <span class="t">THP</span>)
+    <span class="k">case</span> 1:
+        m.workingSet = <span class="f">satSub</span>(raw.usage, raw.stat[<span class="s">"total_inactive_file"</span>])
+        m.rss        = raw.stat[<span class="s">"total_rss"</span>]
+        m.activeAnon, m.inactiveAnon = raw.stat[<span class="s">"total_active_anon"</span>], raw.stat[<span class="s">"total_inactive_anon"</span>]
+        m.fileMapped = <span class="f">ternary</span>(raw.useHierarchy, raw.stat[<span class="s">"total_mapped_file"</span>], raw.stat[<span class="s">"mapped_file"</span>])
+        <span class="c">// v1 has no pgfault/pgmajfault in this path and no THP keys:</span>
+        <span class="c">// leave them ABSENT.                                     R: absent, not measured zero</span>
+    }
+    <span class="k">for</span> _, k := <span class="k">range</span> raw.<span class="f">missingKeys</span>(src.version) { present.<span class="f">remove</span>(<span class="f">fieldFor</span>(k)) }  <span class="c">// e.g. a decoder that never sets a key</span>
+
+    m.swap, m.swapLimit = <span class="f">swapOnly</span>(raw, src.producer)
+    <span class="k">return</span> m, present
+}
+
+<span class="c">// The ONLY place that knows each producer's swap convention.</span>
+<span class="k">func</span> <span class="f">swapOnly</span>(raw <span class="t">rawMemory</span>, p <span class="t">producer</span>) (usage, limit <span class="t">uint64</span>) {
+    <span class="k">switch</span> p {
+    <span class="k">case</span> libcontainerFS, libcontainerFS2, containerdV1:   <span class="c">// reported as mem + swap</span>
+        <span class="k">return</span> <span class="f">satSub</span>(raw.swapReported, raw.usage), <span class="f">satSub</span>(raw.swapLimitReported, raw.usageLimit)
+    <span class="k">case</span> containerdV2:                                   <span class="c">// already swap only</span>
+        <span class="k">return</span> raw.swapReported, raw.swapLimitReported
+    }
+}</pre>
+    <div class="note"><b>What this fixes vs today.</b> <code>computeMemoryStats</code>, <code>computeSwapUsage</code> and the metrics helpers branch on <code>node.CgroupIsV2()</code>. So a v2 guest on a v1 host reads <code>total_*</code> keys the v2 decoder never wrote (working set = usage, RSS = 0). A v1 guest on a v2 host loses <code>anon</code>. A v2 guest's swap-only value gets <code>memory.current</code> subtracted from it and usually reads 0. Here the version and producer travel with the sample.</div>
+    <div class="note open"><b>To verify before relying on it.</b> On a v1 <em>host</em>, today's <code>computeSwapUsage</code> returns libcontainer's <code>memsw</code> value as-is. That's memory + swap (<code>vendor/github.com/opencontainers/cgroups/fs/memory.go:172</code>), which suggests v1 hosts currently report mem+swap as swap. The swap limit subtraction for each producer also needs checking against kubelet's expectations. The review doesn't mention either.</div>
+    <div class="note open"><b>Tests</b> (review, implementation step 3). Each producer gets a fixture-driven table test: guest v1 on a v2 host, guest v2 on a v1 host, swap enabled/disabled/unlimited, and a key missing from the decoder → field absent, not 0. <code>normalizeMemory</code> takes <code>counterSource</code> as a parameter, so every branch runs on any CI host. <code>computeAnonMemory(mem, isCgroupV2)</code> already does this today.</div>
+  </section>
+
+  <section id="publish">
+    <h2><span class="n">8</span>Publish</h2>
+    <p class="why"><q>Under a short store lock, make token validation and publication atomic with respect to that invalidation. Reject an older observation if a newer one has already been accepted.</q></p>
+<pre><span class="k">func</span> (s *<span class="t">resultStore</span>) <span class="f">publishContainer</span>(obs *<span class="t">observation</span>[<span class="t">containerValues</span>]) <span class="t">bool</span> {
+    s.mu.<span class="f">Lock</span>(); <span class="k">defer</span> s.mu.<span class="f">Unlock</span>()            <span class="c">// no I/O below this line</span>
+
+    <span class="k">if</span> s.live[obs.token.id] != obs.token {     <span class="r">// R: removed during collection -&gt; drop</span>
+        <span class="k">return</span> <span class="k">false</span>
+    }
+    h := s.containers[obs.token.id]
+    <span class="k">if</span> h == <span class="k">nil</span> { h = &amp;<span class="t">containerHistory</span>{}; s.containers[obs.token.id] = h }
+
+    <span class="k">if</span> h.latest != <span class="k">nil</span> &amp;&amp; !<span class="f">newer</span>(obs, h.latest) { <span class="r">// R: older observation loses</span>
+        <span class="k">return</span> <span class="k">false</span>
+    }
+    <span class="c">// Copy-on-write: never mutate a published observation; an RPC may be encoding it.</span>
+    h2 := &amp;<span class="t">containerHistory</span>{baseline: h.latest, latest: obs}   <span class="r">// R: immutable after publication</span>
+    <span class="k">if</span> h.latest != <span class="k">nil</span> &amp;&amp; h.latest.source != obs.source { h2.baseline = <span class="k">nil</span> }  <span class="c">// new counter source: new baseline</span>
+    s.containers[obs.token.id] = h2
+    <span class="k">return</span> <span class="k">true</span>
+}
+
+<span class="k">func</span> <span class="f">newer</span>(a, b *<span class="t">observation</span>[<span class="t">V</span>]) <span class="t">bool</span> {
+    <span class="k">if</span> a.mono != b.mono { <span class="k">return</span> a.mono.<span class="f">After</span>(b.mono) }
+    <span class="k">return</span> <span class="f">tieBreak</span>(a, b)                        <span class="r">// R: deterministic tie rule</span>  <span class="r">OPEN</span> <span class="c">which one</span>
+}
+
+<span class="c">// publishPod and publishMetrics are the same shape over s.pods / s.metrics.</span></pre>
+  </section>
+
+  <section id="rpc">
+    <h2><span class="n">9</span>RPC read paths</h2>
+    <p class="why"><q>Build pod responses from current membership and eligible child entries so invalidating a child hides it without rewriting a published pod response.</q></p>
+<pre><span class="k">func</span> (ss *<span class="t">StatsServer</span>) <span class="f">StatsForContainers</span>(ctx <span class="t">Context</span>, ctrs []*<span class="t">Container</span>) []*<span class="t">ContainerStats</span> {
+    out := []*<span class="t">ContainerStats</span>{}
+    <span class="k">for</span> _, c := <span class="k">range</span> ctrs {
+        h := ss.store.<span class="f">readContainer</span>(c.ID)        <span class="c">// lock: lookup + liveness check only</span>
+        <span class="k">if</span> ss.collectionPeriod == 0 || h == <span class="k">nil</span> { <span class="c">// on-demand mode, or cache miss</span>
+            ss.<span class="f">collectWithAdmission</span>(ctx, c)     <span class="c">// statsAdmit; caller owns its own work (no coalescing yet)</span>
+            h = ss.store.<span class="f">readContainer</span>(c.ID)
+        }
+        <span class="k">if</span> h == <span class="k">nil</span> { <span class="k">continue</span> }                   <span class="c">// removed, or required read failed with no previous</span>
+        <span class="k">if</span> <span class="f">tooOld</span>(h.latest) { <span class="k">continue</span> }          <span class="r">OPEN</span> <span class="c">// R: agree on a maximum age first</span>
+        out = <span class="f">append</span>(out, <span class="f">buildContainerStats</span>(h))   <span class="c">// pure projection on values</span>
+    }
+    <span class="k">return</span> out
+}
+
+<span class="k">func</span> (ss *<span class="t">StatsServer</span>) <span class="f">StatsForSandboxes</span>(ctx <span class="t">Context</span>, sboxes []*<span class="t">Sandbox</span>) []*<span class="t">PodSandboxStats</span> {
+    out := []*<span class="t">PodSandboxStats</span>{}
+    <span class="k">for</span> _, sb := <span class="k">range</span> sboxes {
+        pod := ss.store.<span class="f">readPod</span>(sb.ID)
+        <span class="k">if</span> ss.collectionPeriod == 0 || pod == <span class="k">nil</span> { ss.<span class="f">refreshPodStats</span>(ctx, sb); pod = ss.store.<span class="f">readPod</span>(sb.ID) }
+        <span class="k">if</span> pod == <span class="k">nil</span> { <span class="k">continue</span> }
+        children := []*<span class="t">containerHistory</span>{}
+        <span class="k">for</span> _, c := <span class="k">range</span> sb.<span class="f">LiveContainers</span>() {   <span class="r">// R: current membership, at read time</span>
+            <span class="k">if</span> h := ss.store.<span class="f">readContainer</span>(c.ID); h != <span class="k">nil</span> { children = <span class="f">append</span>(children, h) }
+        }
+        out = <span class="f">append</span>(out, <span class="f">buildPodStats</span>(pod, children))
+    }
+    <span class="k">return</span> out
+}
+
+<span class="c">// MetricsForPodSandboxList: same shape over readMetrics / refreshPodMetrics,</span>
+<span class="c">// rendering CRI metrics from stored values (no I/O in the renderer).</span></pre>
+  </section>
+
+  <section id="cpu">
+    <h2><span class="n">10</span>CPU rate</h2>
+    <p class="why"><q>Calculate CPU rate only between ordered observations for the same identity and counter source with positive elapsed time. A counter reset starts a new baseline.</q></p>
+<pre><span class="k">func</span> <span class="f">cpuRate</span>(h *<span class="t">containerHistory</span>) (nanoCores <span class="t">uint64</span>, ok <span class="t">bool</span>) {
+    cur, prev := h.latest, h.baseline
+    <span class="k">if</span> prev == <span class="k">nil</span>                          { <span class="k">return</span> 0, <span class="k">false</span> }   <span class="c">// first sample: omit the field</span>
+    <span class="k">if</span> cur.source != prev.source            { <span class="k">return</span> 0, <span class="k">false</span> }   <span class="r">// R: same counter source</span> <span class="c">(kind, version, producer)</span>
+    elapsed := cur.mono.<span class="f">Sub</span>(prev.mono)
+    <span class="k">if</span> elapsed &lt;= 0                         { <span class="k">return</span> 0, <span class="k">false</span> }   <span class="r">// R: positive elapsed time</span>
+    <span class="k">if</span> cur.values.cpuTotal &lt; prev.values.cpuTotal { <span class="k">return</span> 0, <span class="k">false</span> } <span class="r">// R: reset -&gt; new baseline (next sample)</span>
+    <span class="k">return</span> (cur.values.cpuTotal - prev.values.cpuTotal) * 1e9 / <span class="f">uint64</span>(elapsed), <span class="k">true</span>
+}</pre>
+    <div class="note">Because the pod sweep and standalone misses both write <code>containerHistory</code> through the same ordered publish, nested and standalone CPU rates now share one baseline. That fixes flaw #4 in <code>current-design.md</code>.</div>
+  </section>
+</div>
+</body>
+</html>
